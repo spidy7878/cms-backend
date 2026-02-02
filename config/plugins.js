@@ -2,7 +2,7 @@ module.exports = {
   "users-permissions": {
     config: {
       jwt: {
-        expiresIn: "5m",
+        expiresIn: "10d",
       },
     },
   },
