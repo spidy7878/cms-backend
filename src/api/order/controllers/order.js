@@ -9,13 +9,14 @@ const { createCoreController } = require("@strapi/strapi").factories;
 
 module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   async find(ctx) {
-    // Only return orders for the logged-in user
+    // Only return orders for the logged-in user, and populate user relation
     ctx.query = {
       ...ctx.query,
       filters: {
         ...(ctx.query.filters || {}),
         user: ctx.state.user.id,
       },
+      populate: { user: { fields: ["email"] } },
     };
     return await super.find(ctx);
   },
@@ -23,9 +24,9 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   async findOne(ctx) {
     const { id } = ctx.params;
 
-    // Find the order
+    // Find the order and populate user email
     const entity = await strapi.entityService.findOne("api::order.order", id, {
-      populate: { user: true },
+      populate: { user: { fields: ["email"] } },
     });
 
     // Check if the order belongs to the logged-in user
