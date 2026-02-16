@@ -13,26 +13,31 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
 
     const { items, totalQuantity } = ctx.request.body.data;
 
-    const order = await strapi.documents("api::order.order").create({
-      data: {
-        items,
-        totalQuantity,
-        orderDate: new Date(),
-        userEmail: user.email,
-      },
-      // Connect the relation separately
-      status: "published",
-    });
+    try {
+      // First create the order without the user relation
+      const order = await strapi.documents("api::order.order").create({
+        data: {
+          items,
+          totalQuantity,
+          orderDate: new Date(),
+          userEmail: user.email,
+        },
+        status: "published",
+      });
 
-    // Connect user to order
-    await strapi.documents("api::order.order").update({
-      documentId: order.documentId,
-      data: {
-        user: user.id,
-      },
-    });
+      // Then update to add the user relation
+      const updatedOrder = await strapi.documents("api::order.order").update({
+        documentId: order.documentId,
+        data: {
+          user: user.id,
+        },
+      });
 
-    return { data: order };
+      return { data: updatedOrder };
+    } catch (err) {
+      console.error("Order creation error:", err);
+      return ctx.badRequest(`Order creation failed: ${err.message}`);
+    }
   },
 
   async find(ctx) {
@@ -42,5 +47,18 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
       user: { id: user.id },
     };
     return await super.find(ctx);
+  },
+
+  async findOne(ctx) {
+    const { id } = ctx.params;
+    const entity = await strapi.entityService.findOne("api::order.order", id, {
+      populate: { user: true },
+    });
+
+    if (!entity || entity.user.id !== ctx.state.user.id) {
+      return ctx.unauthorized("You cannot access this order");
+    }
+
+    return await super.findOne(ctx);
   },
 }));
