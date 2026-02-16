@@ -10,16 +10,26 @@ const { createCoreController } = require("@strapi/strapi").factories;
 module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   async find(ctx) {
     // Only return orders for the logged-in user
-    ctx.query = {
-      ...ctx.query,
+    if (!ctx.state.user) {
+      return ctx.unauthorized("You must be logged in to view orders");
+    }
+
+    const { sort, pagination } = ctx.query;
+
+    // Use entity service to properly handle relation filters
+    const orders = await strapi.entityService.findMany("api::order.order", {
       filters: {
-        ...(ctx.query.filters || {}),
         user: {
-          id: ctx.state.user.id, // Correct syntax for filtering by relation
+          id: ctx.state.user.id,
         },
       },
-    };
-    return await super.find(ctx);
+      sort: sort || { orderDate: "desc" },
+      populate: { user: true },
+      ...pagination,
+    });
+
+    // Return in REST API format
+    return { data: orders };
   },
 
   async findOne(ctx) {
