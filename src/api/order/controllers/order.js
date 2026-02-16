@@ -37,16 +37,24 @@ module.exports = createCoreController("api::order.order", ({ strapi }) => ({
   },
 
   async create(ctx) {
-    const userId = ctx.state.user.id;
-    const data = {
-      ...(ctx.request.body.data || {}),
-      user: userId,
-      orderDate: new Date(),
-    };
+    try {
+      const userId = ctx.state.user.id;
+      if (!userId) {
+        ctx.throw(400, "User not authenticated");
+      }
+      const data = {
+        ...(ctx.request.body.data || {}),
+        user: userId,
+        orderDate: new Date(),
+      };
 
-    const order = await strapi.entityService.create("api::order.order", {
-      data,
-    });
-    ctx.body = order;
+      const order = await strapi.entityService.create("api::order.order", {
+        data,
+      });
+      ctx.body = order;
+    } catch (error) {
+      strapi.log.error("Order create error:", error);
+      ctx.throw(500, error.message || "Internal Server Error");
+    }
   },
 }));
